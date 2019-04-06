@@ -1,0 +1,229 @@
+/*Converter header*/
+#include "stdio.h"
+#include "string.h"
+/*Server Header Files*/
+#include "SocketList.h"
+//#include "Database.h"
+#include "serCNV.h"
+//
+#include "Database.h"
+
+char* Message;
+char* To;
+char* From;
+char* Username;
+char* Pwd;
+char **split_string(char *str,const char a_delim);
+int command(char* buffer,SocketSet* set,int currClient);
+void error(const char *msg)
+{
+    perror(msg);
+    exit(1);
+}
+int main(int argc, char *argv[])
+{
+	SetDatabase(); //create directories: Database, Usernames, File: Login.txt Called only once
+	int serversocket, port;
+	int charsN;
+     	char cbuffer[MAXSTRN];
+	char CurrName[NAME];
+     	socklen_t ClientLen;
+     	char buffer[256];
+     	struct sockaddr_in serv_addr,ClientAddr;
+	if(ENABLESetDatabase)
+		SetDatabase();
+     	if (argc < 2) {
+         	fprintf(stderr,"ERROR, no port provided\n");
+         	exit(1);
+     	}
+     	serversocket = socket(AF_INET, SOCK_STREAM, 0);
+     	if (serversocket < 0) 
+        	error("ERROR opening socket");
+     	bzero((char *) &serv_addr, sizeof(serv_addr));
+     	port = atoi(argv[1]);
+     	serv_addr.sin_family = AF_INET;
+     	serv_addr.sin_addr.s_addr = INADDR_ANY;
+     	serv_addr.sin_port = htons(port);
+    	 if (bind(serversocket, (struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
+              error("ERROR on binding");
+    	listen(serversocket,SOMAXCONN);//Select function
+	fd_set waitlist, Cwaitlist; //This will hold the vector with all connected ports to server
+	FD_ZERO(&waitlist);
+	FD_SET(serversocket,&waitlist);  
+	int running=1;
+	SocketSet *SocketsVector=CreateSet();
+	AppendSocket("server",serversocket,SocketsVector);
+	printf("Server has been initialized, now listening to clients\n");
+	//char *currUser;//Some temporal holder
+        int Nsockets,A;
+        SocketSet *ActiveList=CreateSet();
+	Cwaitlist=waitlist;
+	while(running)
+	{
+		printf("Waiting connections\n");
+		Nsockets=select(FD_SETSIZE,&Cwaitlist,NULL,NULL,NULL);
+                A=0; //some counter
+                //We will get a copy of the active users in the following lines
+		ClearSet(ActiveList);
+                for(int i=0;i<FD_SETSIZE;i++)
+                {
+                        if(FD_ISSET(i, &Cwaitlist)) //This will check if socket i is an active socket
+                        {//In the case that it is, then
+				AppendPort(i,ActiveList);
+			}
+		}//I dont need to know their usernames, only the ports
+		//By now ActiveList should have all clients trying to connect to the server socket
+		int i=0,currClient;
+		while((currClient=IterateSet(i,ActiveList))!=-1)
+		{
+			if(currClient==serversocket)
+			{
+				ClientLen=sizeof(ClientAddr);
+                                int client=accept(serversocket,(struct sockaddr*)&ClientAddr,&ClientLen);
+                                if(client<0)
+				{ 
+					printf("Error creating socket for new client\n");
+                                	continue; //If there was an eeror, continue with the next node active
+				}
+				FD_SET(client, &waitlist);//Add new client to vector list
+                                AppendSocket("noname",client,SocketsVector); //Append to original socket
+                                printf("New client in socket %d\n",client);
+                                send(client,"Welcome to the server!\n",sizeof("Welcome to the server!\n")+1,1);
+			}
+			else //if it get into this area, that means that the active node (currClient) had already been added and is connected to the server
+			{
+		//Next step: get destination of message in order to send message between clients
+				bzero(buffer,257);
+				charsN = read(currClient,buffer,sizeof(buffer)-1);
+				strcpy(cbuffer,buffer);
+				if(!(strcmp(buffer,"exit")))
+				{
+					running=0;
+				}
+				if(charsN<=0)//The following block is in case that a user has disconnected from server
+				{
+					printf("Dropping client %d\n",currClient);
+					close(currClient);
+					RemoveSocketPort(currClient, SocketsVector);
+					FD_CLR(currClient, &waitlist);
+				}
+				printf("Message: %s\n",buffer);
+				CommandCNV(cbuffer,CurrName,ActiveList,currClient);
+				printf("Going out: %s\n",buffer);
+				if(CurrName!='\0')
+					AppendSocket(CurrName,currClient,SocketsVector);
+			}
+        		i++; //Go to the next active user
+		}	
+		FD_ZERO(&Cwaitlist);//Repopulate list
+		Cwaitlist=waitlist;
+
+	}
+	printf("Closing server\n");
+	FD_CLR(serversocket,&waitlist);
+	close(serversocket);
+}
+int command(char* buffer,SocketSet* set,int currClient)
+{
+
+	getuser(buffer);
+	//Call command converter
+	if(strstr(buffer,"M:"))
+	{
+	//	send(
+		return 1;
+	}
+	else if(strstr(buffer,"SUser:"))
+	{
+		return 2;
+	}
+	else if(strstr(buffer,"LUser:"))
+	{
+		assert(Username);
+		assert(Pwd);
+		char* returnV=ServerLogin(Username,Pwd);
+		if(returnV[0]=='E')//If error logging in
+			return 3;
+		//But if not error loging in, then returV will have the contacts list
+		char* Msend="C:/";
+		strcat(Msend,returnV);
+		strcat(Msend,"/");
+		send(currClient,Msend,strlen(Msend),1);
+		return 3;
+	}
+	else if(strstr(buffer,"M:"))
+	{
+		return 4;
+	}
+	else if(strstr(buffer,"A:"))
+	{
+		return 5;
+	}
+	else if(strstr(buffer,"D:"))
+	{
+		return 6;
+	}
+}
+void getuser(char *buffer){
+        const char *message;
+
+
+        printf("buffer: %s",buffer);
+        char text = *buffer;
+        char **tokens;
+        tokens = split_string(buffer,'/');
+        if(tokens)
+        {
+                int i;
+                for(i=0;*(tokens+i);i++){
+                        printf("names=[%s]\n",*(tokens+i));
+
+
+                }
+        }
+
+        Username = *(tokens + 1);
+        Pwd = *(tokens + 1);
+
+}
+char **split_string(char *str,const char a_delim){
+        char **result = 0;
+        size_t count = 0;
+        char *tmp = str;
+        char *last_newline = 0;
+        char delim[2];
+        delim[0] = a_delim;
+        delim[1] = 0;
+        while(*tmp){
+                if(a_delim == *tmp){
+
+                        count++;
+                        last_newline = tmp;
+                }
+
+                tmp++;
+
+        }
+        /*space for trail token*/
+        count +=last_newline < (str + strlen(str)-1);
+        count ++;
+
+        result = malloc(sizeof(char*) *count);
+        if(result){
+                size_t idx = 0;
+                char *token = strtok(str,delim);
+
+                while(token){
+                        *(result +idx++) = strdup(token);
+                        token = strtok(0,delim);
+
+                }
+                *(result +idx) = 0;
+
+        }
+
+        return result;
+
+
+}
+

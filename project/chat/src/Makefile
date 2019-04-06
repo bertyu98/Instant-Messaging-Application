@@ -1,0 +1,71 @@
+Makefile: GUI GUI2 server
+#Bibek Adhikari, 2/24/17
+
+ # compiler flags for GTK usage
+GTKINC  = `pkg-config --cflags gtk+-2.0`
+GTKLIBS = `pkg-config --libs gtk+-2.0`
+
+    # general compiler flags
+DEBUG  = -g -DDEBUG
+DEBUG   = -O2
+CFLAGS  = -Wall -ansi $(DEBUG) $(GTKINC) -c
+LFLAGS  = -Wall -ansi $(DEBUG) $(GTKLIBS)
+
+# targets
+all:    GUI server
+
+clean:
+	rm -f *.o
+	rm -f GUI
+
+GUI.o: GUI.c user.h
+	gcc GUI.c $(CFLAGS) -g -o GUI.o
+GUI:  GUI.o GUI2.o
+	gcc GUI.o GUI2.o  $(LFLAGS) -g -o GUI
+test: GUI
+	./GUI
+SocketList.o: SocketList.c SocketList.h Constants.h
+	gcc -Wall -std=c99 -c -g SocketList.c -o SocketList.o
+
+Database.o: Database.c Database.h Constants.h
+	gcc -Wall -std=c99 -c -g Database.c -o Database.o
+
+serCNV.o: serCNV.c serCNV.h Database.h SocketList.h Constants.h
+	gcc -Wall -std=c99 -c -g serCNV.c -o serCNV.o
+
+server.o: server.c serCNV.h Database.h SocketList.h Constants.h
+	gcc -Wall -std=c99 -c -g server.c -o server.o
+
+server: server.o serCNV.o Database.o SocketList.o
+	gcc -g server.o serCNV.o SocketList.o Database.o -o server
+#SocketList.o: SocketList.c SocketList.h Constants.h
+#	gcc -Wall -std=c99 -c -g SocketList.c -o SocketList.o
+#
+#Database.o: Database.c Database.h Constants.h
+#	gcc -Wall -std=c99 -c -g Database.c -o Database.o
+#
+#serCNV.o: serCNV.c serCNV.h Database.h SocketList.h Constants.h
+#	gcc -Wall -std=c99 -c -g serCNV.c -o serCNV.o
+#
+#server.o: server.c serCNV.h SocketList.h Database.h Constants.h
+#	gcc -Wall -std=c99 -c -g server.c -o server.o
+#
+#server: server.o serCNV.o Database.o SocketList.o
+#	gcc -g server.o serCNV.o SocketList.o -o server
+#
+
+##server: server.o serCNV.o SocketList.o Database.o
+#	gcc -g server.o serCNV.o SocketList.o -o server
+
+#database: 
+#	gcc -g -ansi -std=c99 -Wall oldtest.c -o oldtest
+
+GUI2.o: GUI2.c user.h
+	gcc GUI2.c $(CFLAGS) -o GUI2.o
+
+GUI2: GUI2.o
+	gcc GUI2.o $(LFLAGS) -c -o GUI2
+
+
+#EOF
+

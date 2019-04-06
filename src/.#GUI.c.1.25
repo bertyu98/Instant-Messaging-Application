@@ -1,0 +1,694 @@
+#include <gtk/gtk.h> /*Declares variables functions need for GTK*/
+#include <stdio.h>
+#include <stdlib.h>
+#include "user.h" 
+
+void error(const char *message)
+{
+    perror(message);
+    exit(0);
+}
+
+
+/*Image Loading and Manipulation*/
+GdkPixbuf *load_pixbuf_from_file (const char *filename)
+{
+    GError *error = NULL;
+    /*Load the image to GdkPixbuf or variant*/
+    GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file (filename, &error);
+
+    if (pixbuf == NULL)
+    {
+        g_print ("Error loading file: %d : %s\n", error->code, error->message);
+        g_error_free (error);
+        exit (1);
+    }
+    return pixbuf;
+}
+
+GdkPixbufAnimation *load_pixbuf_animation_from_file (const char *filename)
+{
+    GError *error = NULL;
+    GdkPixbufAnimation *pixbuf = gdk_pixbuf_animation_new_from_file (filename, &error);
+
+    if (pixbuf == NULL)
+ 	if (pixbuf == NULL)
+    {
+        g_print ("Error loading file: %d : %s\n", error->code, error->message);
+        g_error_free (error);
+        exit (1);   
+    }
+    return pixbuf;
+}
+
+void close_window(GtkWidget *button,gpointer window){
+	
+   gtk_widget_destroy(GTK_WIDGET(window));
+	
+
+}
+
+void open_dialog(GtkWidget *button,gpointer window)
+{
+   GtkWidget *dialog, *label;
+   dialog = gtk_dialog_new_with_buttons("Dialog",GTK_WINDOW(window),GTK_DIALOG_MODAL,GTK_STOCK_OK,GTK_RESPONSE_OK,GTK_STOCK_CANCEL,GTK_RESPONSE_CANCEL,NULL);
+   label= gtk_label_new("Please enter the correct username and password");
+   gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox),label,0,0,0); /*Vertical Box*/
+   gtk_widget_show_all(dialog);
+   /*G_SIGNAL to connect everything so GTK will respond on click*/
+   gint response = gtk_dialog_run(GTK_DIALOG(dialog));
+   if (response==GTK_RESPONSE_OK)
+       g_print("OK is pressed \n");
+   else
+	g_print("Cancel is pressed \n");
+        gtk_widget_destroy(dialog);
+}
+
+void open_dialogSignUp(GtkWidget *button,gpointer window)
+{
+   GtkWidget *dialog, *label;
+   dialog = gtk_dialog_new_with_buttons("Dialog",GTK_WINDOW(window),GTK_DIALOG_MODAL,GTK_STOCK_OK,GTK_RESPONSE_OK,GTK_STOCK_CANCEL,GTK_RESPONSE_CANCEL,NULL);
+   label= gtk_label_new("Username created");
+   gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox),label,0,0,0); /*Vertical Box*/
+   gtk_widget_show_all(dialog);
+   /*G_SIGNAL to connect everything so GTK will respond on click*/
+   gint response = gtk_dialog_run(GTK_DIALOG(dialog));
+   if (response==GTK_RESPONSE_OK)
+       g_print("OK is pressed \n");
+   else
+        g_print("Cancel is pressed \n");
+        gtk_widget_destroy(dialog);
+}
+
+
+int login_button (GtkButton *button, GObject *context_object){
+    GtkEntry *username = g_object_get_data(context_object,"Login");
+    const  gchar *text;
+    text = gtk_entry_get_text(username);
+    g_print("%s \n",text);
+    GtkEntry *password = g_object_get_data(context_object,"Login2");
+    const  gchar *text2;
+    GtkWidget *window = g_object_get_data(context_object,"window");
+    
+    int *temp = g_object_get_data(context_object,"sockfd");
+    int socket = *temp;
+
+    text2= gtk_entry_get_text(password);
+    g_print("%s \n",text2);	
+    
+    char *us = (char*) gtk_entry_get_text(GTK_ENTRY(username));
+    char *pw = (char*) gtk_entry_get_text(GTK_ENTRY(password));
+
+    login(us, pw, socket);   
+    loggedIn = 1;
+    int n = login(us, pw, socket);   
+
+    
+    gtk_widget_destroy(GTK_WIDGET(window));
+   
+
+
+    return 1;
+}
+
+int signup_button (GtkButton *button, GObject *context_object){
+    GtkEntry *username = g_object_get_data(context_object,"Signup");
+    const  gchar *text;
+    text = gtk_entry_get_text(username);
+    g_print("%s \n",text);
+    GtkEntry *password = g_object_get_data(context_object,"Signup2");
+    const  gchar *text2;
+
+    int *temp = g_object_get_data(context_object,"sockfd");
+    int socket = *temp;
+
+    text2= gtk_entry_get_text(password);
+    g_print("%s \n",text2);
+	
+     char *us = (char*) gtk_entry_get_text(GTK_ENTRY(username));
+    char *pw = (char*) gtk_entry_get_text(GTK_ENTRY(password));
+    
+    signup(us, pw, socket);
+    return 1;
+ 
+}
+
+
+
+char LOGIN_SCREEN (int sockfd, int argc, char **argv)
+{
+    
+    GtkWidget *window = NULL;
+    GtkWidget *button, *button1,*fixed=NULL;
+    GtkWidget *image1,*image2 = NULL;
+    GtkWidget *username, *password = NULL;
+    GdkPixbuf *image = NULL;
+    GdkPixmap *background = NULL;
+    GtkStyle *style = NULL; 
+    PangoFontDescription *font_desc =NULL;
+
+    gtk_init (&argc, &argv);
+ 
+    /* Load a file and put that as a background */
+    image = load_pixbuf_from_file ("background.png");
+    gdk_pixbuf_render_pixmap_and_mask (image, &background, NULL, 0);
+    style = gtk_style_new ();
+    style->bg_pixmap [0] = background;
+
+   
+    window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
+     g_signal_connect(window, "delete-event", G_CALLBACK(gtk_main_quit), NULL);
+       /* Sets the border width of the window. */
+
+    gtk_container_set_border_width (GTK_CONTAINER (window),0);	
+
+    fixed = gtk_fixed_new();
+    gtk_container_add(GTK_CONTAINER(window), fixed);
+
+
+
+    /* Creates a new button with the label "LOGIN" and "SIGNUP". */
+    
+    button = gtk_button_new();
+    image1 = gtk_image_new_from_file("Login.png");
+    gtk_button_set_image (GTK_BUTTON (button), image1);
+    gtk_fixed_put(GTK_FIXED(fixed), button, 535, 300);
+    gtk_widget_set_size_request(button,350,62);
+
+    button1= gtk_button_new();
+     image2  =gtk_image_new_from_file("Signup.png");
+    gtk_button_set_image (GTK_BUTTON (button1),image2);
+     gtk_fixed_put(GTK_FIXED(fixed), button1, 535,500);
+    gtk_widget_set_size_request(button1,350,62);
+ 
+
+     /*displaying box for username and password*/
+     username= gtk_entry_new();
+     gtk_entry_set_max_length (GTK_ENTRY(username),
+                          12);
+     gtk_fixed_put(GTK_FIXED(fixed),username,535,87);/*location*/
+     gtk_widget_set_size_request(username,325,62); /*box width,box height*/
+
+     password= gtk_entry_new();
+       gtk_entry_set_max_length (GTK_ENTRY(password),12);
+     gtk_entry_set_visibility(GTK_ENTRY(password),FALSE);
+    gtk_entry_set_invisible_char (GTK_ENTRY (password),
+                            '*');
+ 
+    gtk_fixed_put(GTK_FIXED(fixed),password,535,178);/*location*/
+     gtk_widget_set_size_request(password,325,62);/*box width  , box height*/
+
+     font_desc= pango_font_description_from_string("Serif 30");
+     gtk_widget_modify_font(username,font_desc);
+     gtk_widget_modify_font(password,font_desc);
+     pango_font_description_free(font_desc);     
+     
+
+     int *p = &sockfd;
+
+     /* Dialogbox when user does not enter a correct password or username,Login       clicked without entering username or password*/
+      g_signal_connect(button,"clicked", G_CALLBACK(open_dialog),window);
+      g_signal_connect(button1,"clicked",G_CALLBACK(open_dialogSignUp),window);     
+     /*Handling object AND Login buttons*/
+      g_object_set_data(G_OBJECT(button),"sockfd",p);
+      g_object_set_data(G_OBJECT(button),"Login",username);
+      g_object_set_data(G_OBJECT(button),"Login2",password);
+     g_signal_connect(GTK_BUTTON(button),"clicked",G_CALLBACK(login_button),button);
+      g_signal_connect(GTK_BUTTON(button),"clicked",G_CALLBACK(login_button),button);
+    
+
+      /*Sign up Buttons */
+      g_object_set_data(G_OBJECT(button1),"sockfd",p);
+      g_object_set_data(G_OBJECT(button1),"Signup",username);
+      g_object_set_data(G_OBJECT(button1),"Signup2",password);
+      g_signal_connect(GTK_BUTTON(button1),"clicked",G_CALLBACK(signup_button),button1);
+     
+      /*Makinga login button close*/
+      g_object_set_data(G_OBJECT(button),"window",window);      
+
+  
+     /* Handler for deleting event*/
+    g_signal_connect(G_OBJECT(window), "destroy", 
+      G_CALLBACK(gtk_main_quit), NULL);
+
+    /* Always remember this step, this tells GTK that our preparation for
+ *      * this button is complete, and it can now be displayed. */
+    gtk_widget_show (button);
+    gtk_widget_show(button1);
+    
+    /*Set title*/	
+    gtk_window_set_title (GTK_WINDOW(window), "Project 2");
+	/*Size Window*/
+    gtk_window_set_default_size (GTK_WINDOW (window),900 , 600);
+	/*Put Background Image*/
+    gtk_widget_set_style (GTK_WIDGET(window), GTK_STYLE (style));
+
+
+       /*Set Positon of the window*/
+    gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
+   
+    gtk_widget_show_all (window);
+                   
+
+    char *us  = (char*) gtk_entry_get_text(GTK_ENTRY(username));     
+
+   if(loggedIn == 1){
+    /* g_signal_connect (G_OBJECT (window),"clicked",G_CALLBACK (close_window),G_OBJECT (window)); */
+     g_signal_connect(window,"destroy",G_CALLBACK(gtk_main_quit),NULL);
+	/*Destroy window*/
+   
+	   
+    
+	}
+   gtk_main ();
+
+         return 0;      
+}
+
+int main(int argc, char **argv)
+{
+
+    int sockfd, portno;
+    struct sockaddr_in serv_addr;
+    struct hostent *server;
+    char us;
+
+
+    if (argc < 3) {
+       fprintf(stderr,"usage %s hostname port\n", argv[0]);
+       exit(0);
+    }
+    portno = atoi(argv[2]);
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0)
+        error("ERROR opening socket");
+    server = gethostbyname(argv[1]);
+    if (server == NULL) {
+        fprintf(stderr,"ERROR, no such host\n");
+        exit(0);
+    }
+    bzero((char *) &serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr,
+         (char *)&serv_addr.sin_addr.s_addr,
+         server->h_length);
+    serv_addr.sin_port = htons(portno);
+    if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0)
+        error("ERROR connecting");
+
+    read(sockfd, buffer, 255);
+    printf("%s", buffer);
+
+    printf("HERE IS THE INITIAL SOCKET NUMBER: %d\n", sockfd);
+
+    us = LOGIN_SCREEN(sockfd, argc, argv);
+    printf("THIS IS YOUR USERNAME:");
+
+    nonblock(sockfd);
+    nonblock(0);
+
+    /*BERT(sockfd, username, argc, argv);*/
+
+    fd_set client;
+
+    while(true){
+
+    /*Values and functions used to make select work*/
+    FD_ZERO(&client);
+    FD_SET(sockfd, &client);
+
+    FD_SET(0, &client);
+    if(select(FD_SETSIZE, &client, NULL, NULL, NULL) != -1)
+            {
+                int fd=0;
+                for( fd = 0;fd < FD_SETSIZE; fd++)
+                {
+                       if(fd == sockfd)
+                       {
+                              int lastchar = read(sockfd, buffer, 255);
+                              buffer[lastchar] = '\0';
+                              /*send buffer to GUI*/
+                              memset(&buffer, 0, 256);
+
+                       }
+                       else if(fd == 0)
+                       {
+                       /*get the message from the GUI*/
+                       sendmessage(buffer, (char*) gtk_entry_get_text(GTK_ENTRY(username)), recipient, message, sockfd);
+     		       }
+
+                }
+            }
+    }
+        
+  
+
+
+
+}
+
+void sendmessage(char *result, char *username, char *recipient, char *message, int sockfd)
+{
+
+     int n;
+     memset(result, 0, MAXSTRN);
+
+     strcat(result,"M: /");
+     strcat(result, message );
+     strcat(result, "/F: /");
+     strcat(result, username);
+     strcat(result, "/T: /");
+     strcat(result, recipient);
+     strcat(result, "/");
+
+     bzero(buffer, MAXSTRN);
+     strcpy(buffer, result);
+     n = write(sockfd, buffer, strlen(buffer));
+     if (n < 0)
+                error("ERROR sending command to socket");
+     bzero(buffer, 256);
+     n = read(sockfd, buffer, 255);
+     if (n < 0)
+                error("ERROR reading from socket");
+     memset(result, 0, MAXSTRN);
+
+
+
+}
+/*Login code*/
+int login(char *username, char *password, int sockfd)
+{
+
+    int n;
+    char pwd[NAME];
+    strcpy(pwd,password);
+    memset(result, 0, MAXSTRN);
+    #ifndef DEBUG
+    /*Enters a username to associate with the socket number*/
+    /*username[strlen(username)-1] = '\0';
+    pwd[strlen(pwd)-1] = '\0';*/
+
+    encrypt(pwd);
+
+    strcat(result, "LUser: /");
+    strcat(result, username);
+    strcat(result,"/Pwd: /");
+    strcat(result, pwd);
+    strcat(result, "/");
+
+    #endif
+
+    /*Debug Username and Password*/
+    #ifdef DEBUG
+    strcpy(username, "DEBUG");
+    username[strlen(username)] = '\0';
+
+    strcpy(pwd, "DEBUGpassword");
+    pwd[strlen(pwd)-1] = '\0';
+    encrpyt(pwd);
+    #endif
+
+    bzero(buffer, 256);
+    strcpy(buffer, result);
+    n = write(sockfd, buffer, strlen(buffer));
+    if (n < 0)
+               error("ERROR sending command to socket");
+    bzero(buffer, 256);
+    n = read(sockfd, buffer, 255);
+    if (n < 0)
+ 	error("ERROR reading from socket");
+
+	return 1;
+
+}
+
+
+/*Sign up module, slightly different in that it calls login*/
+void signup(char *username, char *password, int sockfd)
+{
+
+    int n;
+    char pwd[NAME];
+    strcpy(pwd,password);
+    memset(result, 0, MAXSTRN);
+    #ifndef DEBUG
+    /*Enters a username to associate with the socket number*/
+    /*username[strlen(username)-1] = '\0';
+    pwd[strlen(pwd)-1] = '\0';*/
+
+    encrypt(pwd);
+
+    strcat(result, "SUser: /");
+    strcat(result, username);
+    strcat(result,"/Pwd: /");
+    strcat(result, pwd);
+    strcat(result, "/");
+
+    #endif
+
+    /*Debug Username and Password*/
+    #ifdef DEBUG
+    strcpy(username, "DEBUG");
+    username[strlen(username)] = '\0';
+
+    strcpy(pwd, "DEBUGpassword");
+    pwd[strlen(pwd)-1] = '\0';
+    encrpyt(pwd);
+    #endif
+    bzero(buffer, 256);
+    strcpy(buffer, result);
+    n = write(sockfd, buffer, strlen(buffer));
+    if (n < 0)
+               error("ERROR sending command to socket");
+    bzero(buffer, 256);
+    n = read(sockfd, buffer, 255);
+    if (n < 0)
+               error("ERROR reading from socket");
+}
+
+void encrypt(char* strn){
+        int i;
+        for(i = 0;*(strn+i)!='\0';i++){
+                *(strn+i)+=2;
+        }
+}
+
+void nonblock(int fd)
+{
+    int flags = fcntl(fd, F_GETFL);
+    if(flags < 0)
+        perror("fcntl failed");
+
+    flags |= O_NONBLOCK;
+    fcntl(fd, F_SETFL, flags);
+}
+
+int CommandCNV(char* strn){
+        /*char *person[10];*/
+        /*static int loggedIn = 0;*/
+        int nonLog = 1;
+        int strnLen = 0;
+        int Com = -1;/*looks looks for a ':' then a ' ' then a '/'*/
+        int ComLoc[MAXCMND] = {0};
+        char ComEnd[MAXCMND];
+        char newStrn[MAXSTRN] = "";
+        /*char finalStrn[MAXSTRN] = "";*/
+  static char userStrn[NAME] = DEFAULTNAME;
+        char *ComRoot, *ComStart,*k;
+        int ComUser, ComNext;
+        ComUser = 0;
+        int i;
+        int j = 0;
+        char from[NAME] = "N", to[NAME] = "N"/*, pwd[NAME] = "N"*/;
+        for(i = 1;*(strn+i)!='\0';i++){/*saves the location within the string that a : indication of command appears. It does so for every instance in order inside ComLoc*/
+                strnLen++;/*attains the size of the string*/
+                if(Com>-1){/*if : has been found*/
+                        if(Com>256){/*if : and ' ' have been found*/
+                                if(Com>1256){/*if : / has been found*/
+                                        ComLoc[j] = Com - 2000;/*stores pos of the ':' in ComLoc*/
+                                        Com = -1;/*result stored so reset Com to begin looking for ':' again*/
+                                        j++;
+                                }
+                                else if(*(strn+i) =='/'){ Com += 1000;  }/*indicate '/' has been found*/
+                                else{ Com = -1; }/*no '/' was found so reset Com to begin looking for ':' again*/
+                        }
+                        else if(        *(strn+i) ==' '){ Com += 1000;  }/*indicate ' ' has been found*/
+                        else{         Com = -1; }/*no ' ' was found so reset Com to begin looking for ':' again*/
+                }
+                else if(                *(strn+i) ==':'){ Com = i;      }/*indicate ':' has been found*/
+        }
+        j--;
+        i = j;
+        for(;j>=0;j--){
+                ComRoot = strn + ComLoc[j] - 1;
+                switch( *ComRoot ){
+                        case 'F':/*F From*/
+                                /*if(loggedIn){*/
+                                        /*Should be passed as F: /USER/ */
+                                        /*No Output*/
+ ComEnd[j] = 4;
+                                        ComLoc[j] -= 1;
+                                        ComStart = strn + ComLoc[j] + ComEnd[j];
+                                        if(i==j){/*Last, F Command*/
+                                                ComNext = strnLen - (ComLoc[j] + ComEnd[j]);
+                                        }
+                                        else{/*F Command*/
+                                                ComNext = ComLoc[j+1] - 1 - (ComLoc[j] + ComEnd[j]);
+                                        }
+                                        strncpy(from, ComStart, ComNext);
+                                        from[ComNext] = '\0';
+                                /*}*/
+                                break;
+                        case 'T':/*T To*/
+                                /*if(loggedIn){*/
+                                /*Should be passed as T: /FRIENDUSER/ */
+                                /*No Output*/
+                                        ComEnd[j] = 4;
+                                        ComLoc[j] -= 1;
+                                        ComStart = strn + ComLoc[j] + ComEnd[j];
+                                        if(i==j){/*Last, T Command*/
+                                                ComNext = strnLen - (ComLoc[j] + ComEnd[j]);
+                                        }
+                                        else{/*T Command*/
+                                                ComNext = ComLoc[j+1] - 1 - (ComLoc[j] + ComEnd[j]);
+                                        }
+                                        strncpy(to, ComStart, ComNext);
+                                        to[ComNext] = '\0';
+
+                                break;
+                        case 'M':/*M Message*/
+                                /*M*/
+                                /*if(loggedIn){*/
+                                /*Should be passed as M: /MESSAGE/ requires that F and T commands be placed after M command*/
+                                /*No Output*/
+                                /*Sent to Display*/
+                                        
+ComEnd[j] = 4;
+                                        ComLoc[j] -= 1;
+                                        ComStart = strn + ComLoc[j] + ComEnd[j];
+                                        if(i==j){/*Last, M Command*/
+                                                ComNext = strnLen - (ComLoc[j] + ComEnd[j]);
+                                        }
+                                        else{/*M Command*/
+                                                ComNext = ComLoc[j+1] - 1 - (ComLoc[j] + ComEnd[j]);
+                                        }
+                                        strncpy(newStrn, ComStart, ComNext);
+                                        newStrn[ComNext] = '\0';
+                                        if(!strcmp(from,userStrn)){
+                                                printf("Message Sent Successfuly\n");
+                                        }
+                                        else if(!strcmp(to,userStrn)){
+                                                printf("Dearest %s,\n%s\nSincerly, %s\n",to,newStrn,from);
+                                        }
+
+                                break;
+                        case 'r':/*Err*/
+                                if( ComLoc[j]>=3 && !strncmp(ComRoot-2,"Err",2) ){
+                                        /*Err*/
+                                        ComEnd[j] = 6;
+                                        ComLoc[j] -= 3;
+                                        ComStart = strn + ComLoc[j] + ComEnd[j];
+                                        if(i==j){/*Last, Err Command*/
+                                                ComNext = strnLen - (ComLoc[j] + ComEnd[j]);
+                                        }
+                                        else{/*Err Comman*/
+                                                ComNext = ComLoc[j+1] - 1 - (ComLoc[j] + ComEnd[j]);
+                                        }
+                                        strncpy(newStrn, ComStart, ComNext);
+                                        newStrn[ComNext] = '\0';
+                                        printf("Error: %s\n",newStrn);
+  }
+                                else{
+                                        printf("Found no target command\n");
+                                        ComEnd[j] = 3;
+                                }
+                                break;
+                        case 'A':/*A Active*/
+                                /*A*/
+                                if(loggedIn){
+                                        /*input A: /USER\nUSER/ */
+                                        /*Outputs active users*/
+                                        ComEnd[j] = 4;
+                                        ComLoc[j] -= 1;
+                                        ComStart = strn + ComLoc[j] + ComEnd[j];
+                                        if(i==j){/*Last, A Command*/
+                                                ComNext = strnLen - (ComLoc[j] + ComEnd[j]);
+                                        }
+                                        else{/*A Command*/
+                                                ComNext = ComLoc[j+1] - 1 - (ComLoc[j] + ComEnd[j]);
+                                        }
+                                        strncpy(newStrn, ComStart, ComNext);
+                                        newStrn[ComNext] = '\0';
+                                        printf("These are the current active users:\n%s\n",newStrn);
+                                }
+                                break;
+                        case 'C':/*C Contacts*/
+                                /*C*/
+                                ComEnd[j] = 4;
+                                ComLoc[j] -= 1;
+                                ComStart = strn + ComLoc[j] + ComEnd[j];
+                                if(i==j){/*Last, C Command*/
+                                        ComNext = strnLen - (ComLoc[j] + ComEnd[j]);
+                                }
+                                else{/*C Command*/
+                                        ComNext = ComLoc[j+1] - 1 - (ComLoc[j] + ComEnd[j]);
+                                }
+                                Com = 0;
+                                for(k = ComStart;k!=ComStart+ComNext;k++){
+                                        if(Com>0){/*if / has been found*/
+                                                if(Com>1){/*if / and ' ' have been found*/
+                                                        if(Com>2){/*if / / has been found*/
+                                                                ComUser = k - ComStart - 3;
+                                                                break;
+                                                        }
+                                                        else if(*k =='/'){ Com = 3;     }/*indicate '/' has been found*/
+                                                        else{ Com = 0;  }/*no '/' was found so reset Com to begin looking for ':' again*/
+                                                }
+                                                else if(        *k ==' '){ Com = 2;     }/*indicate ' ' has been found*/
+                                                else{         Com = 0;  }/*no ' ' was found so reset Com to begin looking for ':' again*/
+                                        }
+                                        else if(                *k =='/'){ Com = 1;     }/*indicate '/' has been found*/
+                                        else{                 Com = 0; }
+                                }
+                                if(!loggedIn){
+                                        nonLog = 1;
+                                }
+                                strncpy(userStrn, ComStart, ComUser);
+                                strncpy(newStrn, ComStart + ComUser + 3, ComNext - ComUser - 3);
+                                userStrn[ComUser] = '\0';
+                                newStrn[ComNext] = '\0';
+                                if(nonLog){
+                                        if(!strcmp(userStrn,DEFAULTNAME)){
+       						printf("Sign up successful, please Log in to access your account\n");
+                                        }
+                                        else{
+                                               printf("Login successful\nWelcome %s\n",userStrn);
+                                                loggedIn = 1;
+                                        }
+                                        nonLog = 0;
+                                }
+                                else{
+                                        printf("Here is a list of all your current friends\n%s\n",newStrn);
+                                }
+                                break;
+                        default:/*Empty Command*/
+                                printf("Found no target command\n");
+                                ComEnd[j] = 3;
+                                break;
+                }
+        
+        /*strcpy(strn,finalStrn);Store return commands where input commands were stored*/
+        /*if(loggedIn){
+ *  *                 strcat(strn,"R: /");
+ *   *                                 strcat(strn,userStrn);
+ *    *                                                 strcat(strn,"/");
+ *     *                                                         }*/
+        /*printf("Cumulative output:\n\n%s\n\n",strn);*/
+        
+}	return loggedIn;
+}
+
+
+
+
+	

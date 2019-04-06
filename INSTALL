@@ -1,0 +1,10 @@
+Type tar -xvzf Chat_Beta_src.tar.gz, then cd Chat_Beta_src, then make.
+
+
+Afterwards, one should run server first.
+	The server can be run on a server such as crystalcove or bondi, followed by a port number (anything above 2000).
+	For example it would look something like this "./server crystalcove 5312"
+
+Next, run the GUI (which contains the client code).
+	Make sure it is opened on the same port and host as the server.
+	For example it should look like "./GUI crystalcove 5312"

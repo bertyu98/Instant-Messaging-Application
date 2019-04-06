@@ -1,0 +1,23 @@
+﻿This is a alpha version chat software, to install, please type ”make”, for more detailed instructions,
+refer to the user manual.
+
+For Succesful Login you must utilize these credentials:
+Username: GUY
+Password: ace
+
+Features that work:
+	Server is able to send and receive several requests from the clients
+	Client can get basic input from user to start a login process.
+	Client and server are able to encode or decode flags that represent commands for each side to execute.
+	Clients are put in queue when they send message and are resent a message in order of first come first serve.
+BETA Features:
+	GUI now has a working login screen.  The login screen accepts the values from the GUI and sends them to the server.
+	Although it will send initially, after a couple of submitting the same username and password, the program will segfault.  
+	However, if you keep changing the information in the text boxes it will not segfault.
+
+Features that do not work:
+	Sign up and Login are not completely finished yet (data sends to the server, but there is no checking procedure yet).
+	Database of users and conversations are not completely implemented yet (but we have started that)
+BETA Features that do not work:
+	After login screen, the actual messaging of the app does not work.  There needs to be a new window that opens where people can actually chat.
+	The account creation does not actually work yet.

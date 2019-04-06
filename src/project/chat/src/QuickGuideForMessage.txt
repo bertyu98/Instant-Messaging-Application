@@ -1,0 +1,7 @@
+First connect to UCI VPN.
+Run the executable for Message4U.
+To run : ./GUI <Server Host> <Port Number>.
+Login using Username: Professor Password: EECS22L.
+Click on user <Team 4>.
+Type a message in a text box.
+Click on green send button.

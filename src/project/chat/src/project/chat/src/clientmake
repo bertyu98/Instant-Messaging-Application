@@ -1,0 +1,28 @@
+Makefile: GUI
+#Bibek Adhikari, 2/24/17
+
+ # compiler flags for GTK usage
+GTKINC  = `pkg-config --cflags gtk+-2.0`
+GTKLIBS = `pkg-config --libs gtk+-2.0`
+
+    # general compiler flags
+DEBUG  = -g -DDEBUG
+DEBUG   = -O2
+CFLAGS  = -Wall -ansi $(DEBUG) $(GTKINC) -c
+LFLAGS  = -Wall -ansi $(DEBUG) $(GTKLIBS)
+
+# targets
+all:    GUI
+
+clean:
+	rm -f *.o
+	rm -f GUI
+
+GUI.o: GUI.c user.h
+	gcc GUI.c $(CFLAGS) -g -o GUI.o
+GUI:  GUI.o
+	gcc GUI.o  $(LFLAGS) -g -o GUI
+test: GUI
+	./GUI
+# EOF
+
